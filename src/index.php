@@ -19,6 +19,19 @@ if (!isset($_SERVER["TOKEN"])) {
     renderOutput($message, 500);
 }
 
+// 🔒 HARD USER LOCK (single-tenant)
+$ALLOWED_USER = "Balaji-Coder06";
+
+$userParam = $_REQUEST["user"] ?? null;
+
+if ($userParam !== $ALLOWED_USER) {
+    header("Cache-Control: no-store");
+    header("HTTP/1.1 403 Forbidden");
+    echo "Unauthorized";
+    exit;
+}
+
+
 // set cache to refresh once per three horus
 $cacheMinutes = 3 * 60 * 60;
 header("Expires: " . gmdate("D, d M Y H:i:s", time() + $cacheMinutes) . " GMT");
