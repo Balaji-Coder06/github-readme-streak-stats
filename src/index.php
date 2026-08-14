@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 // load functions
-require_once "../vendor/autoload.php";
-require_once "stats.php";
-require_once "card.php";
+require_once __DIR__ . "/../vendor/autoload.php";
+require_once __DIR__ . "/stats.php";
+require_once __DIR__ . "/card.php";
 
 // load .env
 $dotenv = \Dotenv\Dotenv::createImmutable(dirname(__DIR__, 1));
