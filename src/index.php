@@ -2,24 +2,23 @@
 
 declare(strict_types=1);
 
-// load functions
+// Load functions
 require_once __DIR__ . "/../vendor/autoload.php";
 require_once __DIR__ . "/stats.php";
 require_once __DIR__ . "/card.php";
 
-// load .env
-$dotenv = \Dotenv\Dotenv::createImmutable(dirname(__DIR__, 1));
-$dotenv->safeLoad();
+// Load TOKEN from Vercel environment variables
+$token = getenv("TOKEN");
 
-// if environment variables are not loaded, display error
-if (!isset($_SERVER["TOKEN"])) {
-    $message = file_exists(dirname(__DIR__ . "../.env", 1))
-        ? "Missing token in config. Check Contributing.md for details."
-        : ".env was not found. Check Contributing.md for details.";
-    renderOutput($message, 500);
+if (!$token) {
+    renderOutput("Missing TOKEN environment variable.", 500);
 }
 
-// 🔒 HARD USER LOCK (single-tenant)
+// Keep compatibility with existing code
+$_SERVER["TOKEN"] = $token;
+
+
+// 🔒 HARD USER LOCK
 $ALLOWED_USER = "Balaji-Coder06";
 
 $userParam = $_REQUEST["user"] ?? null;
@@ -32,36 +31,71 @@ if ($userParam !== $ALLOWED_USER) {
 }
 
 
-// set cache to refresh once per three horus
+// Cache for 3 hours
 $cacheMinutes = 3 * 60 * 60;
-header("Expires: " . gmdate("D, d M Y H:i:s", time() + $cacheMinutes) . " GMT");
-header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+
+header("Expires: " . gmdate(
+    "D, d M Y H:i:s",
+    time() + $cacheMinutes
+) . " GMT");
+
+header("Last-Modified: " . gmdate(
+    "D, d M Y H:i:s"
+) . " GMT");
+
 header("Cache-Control: public, max-age=$cacheMinutes");
 
-// redirect to demo site if user is not given
-if (!isset($_REQUEST["user"])) {
-    header("Location: demo/");
-    exit();
-}
 
 try {
-    // get streak stats for user given in query string
-    $user = preg_replace("/[^a-zA-Z0-9\-]/", "", $_REQUEST["user"]);
-    $startingYear = isset($_REQUEST["starting_year"]) ? intval($_REQUEST["starting_year"]) : null;
-    $contributionGraphs = getContributionGraphs($user, $startingYear);
-    $contributions = getContributionDates($contributionGraphs);
-    if (isset($_GET["mode"]) && $_GET["mode"] === "weekly") {
+    $user = preg_replace(
+        "/[^a-zA-Z0-9\-]/",
+        "",
+        $_REQUEST["user"]
+    );
+
+    $startingYear = isset($_REQUEST["starting_year"])
+        ? intval($_REQUEST["starting_year"])
+        : null;
+
+    $contributionGraphs = getContributionGraphs(
+        $user,
+        $startingYear
+    );
+
+    $contributions = getContributionDates(
+        $contributionGraphs
+    );
+
+    if (
+        isset($_GET["mode"]) &&
+        $_GET["mode"] === "weekly"
+    ) {
         $stats = getWeeklyContributionStats($contributions);
     } else {
-        // split and normalize excluded days
-        $excludeDays = normalizeDays(explode(",", $_GET["exclude_days"] ?? ""));
-        $stats = getContributionStats($contributions, $excludeDays);
+        $excludeDays = normalizeDays(
+            explode(",", $_GET["exclude_days"] ?? "")
+        );
+
+        $stats = getContributionStats(
+            $contributions,
+            $excludeDays
+        );
     }
+
     renderOutput($stats);
+
 } catch (InvalidArgumentException | AssertionError $error) {
-    error_log("Error {$error->getCode()}: {$error->getMessage()}");
+
+    error_log(
+        "Error {$error->getCode()}: {$error->getMessage()}"
+    );
+
     if ($error->getCode() >= 500) {
         error_log($error->getTraceAsString());
     }
-    renderOutput($error->getMessage(), $error->getCode());
+
+    renderOutput(
+        $error->getMessage(),
+        $error->getCode()
+    );
 }
